@@ -1,7 +1,8 @@
+#include <stdio.h>
 #include <stdint.h>
 
 struct partition {
-    uint8_t *name;
+    char *name;
     uint64_t offset;
     uint64_t length;
     uint8_t format;
@@ -51,3 +52,8 @@ static struct partition partitions[] = {
         .format = 2,
     },
 };
+
+int partition_open(int fd) {
+    printf("%s\n", partitions[fd].name);
+    return 0;
+}
