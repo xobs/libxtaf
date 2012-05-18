@@ -3,6 +3,4 @@
 
 struct xtaf;
 
-struct xtaf *xtaf_init(char *filename);
-
-#endif
+#endif /* __XTAF_H__ */
