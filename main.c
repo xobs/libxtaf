@@ -10,8 +10,7 @@
 int main (int argc, char **argv) {
     struct disk *disk;
     struct part *part;
-    uint64_t i;
-    //struct xtaf *xtaf;
+    struct xtaf *xtaf;
 
     if (argc != 2) {
         printf("Usage: %s [image-file]\n", argv[0]);
@@ -29,8 +28,11 @@ int main (int argc, char **argv) {
         return 1;
     }
 
-    for (i=0; i<part_length(part); i++)
-        printf("%c", part_byte(part, i));
+    xtaf = xtaf_open(part);
+    if (!xtaf) {
+        perror("Unable to open XTAF partition");
+        return 1;
+    }
 
     return 0;
 }
