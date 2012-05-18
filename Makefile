@@ -1,4 +1,4 @@
-SOURCES=reader
+SOURCES=part.c main.c xtaf.c disk.c
 OBJECTS=$(SOURCES:.c=.o)
 EXEC=reader
 MY_CFLAGS += -Wall -Werror -O0 -g
