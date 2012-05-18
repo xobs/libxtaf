@@ -88,7 +88,7 @@ struct part *part_open(struct disk *disk, int part_id) {
 
     fprintf(stderr, "Opening partition %s...\n", part->def->name);
     if (!part->def->length)
-        part->def->length = disk_length(part->disk)-part->def->length;
+        part->def->length = disk_length(part->disk) - part->def->offset;
 
     part->data = disk_mmap(part->disk, part->def->offset, part->def->length);
 
