@@ -108,3 +108,6 @@ uint8_t part_byte(struct part *part, uint64_t offset) {
     return part->data[offset];
 }
 
+const uint8_t *part_data(struct part *part) {
+    return part->data;
+}
