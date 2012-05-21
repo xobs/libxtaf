@@ -133,7 +133,7 @@ struct xtaf *xtaf_init(struct part *part) {
 
 
 
-struct xtaf_dir *xtaf_get_root(struct xtaf *xtaf) {
+struct xtaf_dir *xtaf_dir_get(struct xtaf *xtaf, uint32_t cluster) {
     struct xtaf_dir *dir;
 
     dir = malloc(sizeof(struct xtaf_dir));
@@ -141,12 +141,17 @@ struct xtaf_dir *xtaf_get_root(struct xtaf *xtaf) {
         return NULL;
 
 
-    dir->rec = (struct xtaf_record *)xtaf_cluster(xtaf, xtaf->rdc);
+    dir->rec = (struct xtaf_record *)xtaf_cluster(xtaf, cluster);
     dir->parent = NULL;
     dir->cluster = xtaf->rdc;
     dir->xtaf = xtaf;
 
     return dir;
+}
+
+
+struct xtaf_dir *xtaf_get_root(struct xtaf *xtaf) {
+    return xtaf_dir_get(xtaf, xtaf->rdc);
 }
 
 
