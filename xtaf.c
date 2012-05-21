@@ -48,7 +48,10 @@ static char *xtaf_time_str(uint16_t t) {
 static char *xtaf_date_str(uint16_t t) {
     static char str[64];
     t = htons(t);
-    snprintf(str, sizeof(str)-1, "%u/%u/%u", t&31, ((t>>6)&63), t>>10);
+    uint32_t year = ((t>>9)&0x7f)+1980;
+    uint8_t month = (t>>5)&0x0f;
+    uint8_t day = (t>>0)&0x1f;
+    snprintf(str, sizeof(str)-1, "%u/%u/%u", day, month, year);
     return str;
 }
 
