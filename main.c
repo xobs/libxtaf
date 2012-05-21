@@ -33,7 +33,7 @@ int main (int argc, char **argv) {
         perror("Unable to open XTAF partition");
         return 1;
     }
-    print_root(xtaf);
+    xtaf_print_root(xtaf);
 
     return 0;
 }

@@ -38,6 +38,7 @@ struct xtaf_record {
 } __attribute__ ((__packed__));
 
 
+
 static char *xtaf_time_str(uint16_t t) {
     static char str[64];
     t = htons(t);
@@ -48,6 +49,7 @@ static char *xtaf_time_str(uint16_t t) {
     return str;
 }
 
+
 static char *xtaf_date_str(uint16_t t) {
     static char str[64];
     t = htons(t);
@@ -57,6 +59,7 @@ static char *xtaf_date_str(uint16_t t) {
     snprintf(str, sizeof(str)-1, "%u/%u/%u", day, month, year);
     return str;
 }
+
 
 struct xtaf *xtaf_init(struct part *part) {
     struct xtaf *xtaf;
@@ -112,7 +115,7 @@ struct xtaf *xtaf_init(struct part *part) {
 }
 
 
-uint32_t print_root(struct xtaf *xtaf) {
+uint32_t xtaf_print_root(struct xtaf *xtaf) {
     fprintf(stderr, "Root directory:\n");
     int i;
     struct xtaf_record *rec;
