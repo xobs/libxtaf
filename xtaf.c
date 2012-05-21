@@ -45,8 +45,8 @@ struct xtaf_dir_entry {
     uint8_t  filename[0x2a];
     uint32_t start_cluster;
     uint32_t file_size;
-    uint16_t creation_date;
-    uint16_t creation_time;
+    uint16_t create_date;
+    uint16_t create_time;
     uint16_t access_date;
     uint16_t access_time;
     uint16_t update_date;
@@ -75,7 +75,6 @@ static inline uint32_t xtaf_next_cluster_num(struct xtaf *xtaf, uint32_t cluster
 
 static char *xtaf_time_str(uint16_t t) {
     static char str[64];
-    t = htons(t);
     uint8_t hours = (t>>11)&0x1f;
     uint8_t minutes = (t>>5)&0x3f;
     uint8_t seconds = 2*((t>>0)&0x1f);
@@ -86,7 +85,6 @@ static char *xtaf_time_str(uint16_t t) {
 
 static char *xtaf_date_str(uint16_t t) {
     static char str[64];
-    t = htons(t);
     uint32_t year = ((t>>9)&0x7f)+1980;
     uint8_t month = (t>>5)&0x0f;
     uint8_t day = (t>>0)&0x1f;
@@ -189,8 +187,8 @@ struct xtaf_dir *xtaf_dir_get(struct xtaf *xtaf, uint32_t cluster) {
             && rec->access_time == 0xffff
             && rec->update_date == 0xffff
             && rec->update_time == 0xffff
-            && rec->creation_date == 0xffff
-            && rec->creation_time == 0xffff
+            && rec->create_date == 0xffff
+            && rec->create_time == 0xffff
             && rec->file_size == -1
             && rec->start_cluster == -1
             && rec->file_flags == 0xff
@@ -219,8 +217,8 @@ struct xtaf_dir *xtaf_dir_get(struct xtaf *xtaf, uint32_t cluster) {
             && rec->access_time == 0xffff
             && rec->update_date == 0xffff
             && rec->update_time == 0xffff
-            && rec->creation_date == 0xffff
-            && rec->creation_time == 0xffff
+            && rec->create_date == 0xffff
+            && rec->create_time == 0xffff
             && rec->file_size == -1
             && rec->start_cluster == -1
             && rec->file_flags == 0xff
@@ -228,7 +226,16 @@ struct xtaf_dir *xtaf_dir_get(struct xtaf *xtaf, uint32_t cluster) {
             )
                 break;
 
-            dir->entries[entry++] = *rec;
+            dir->entries[entry] = *rec;
+            dir->entries[entry].access_date = ntohs(dir->entries[entry].access_date);
+            dir->entries[entry].access_time = ntohs(dir->entries[entry].access_time);
+            dir->entries[entry].update_date = ntohs(dir->entries[entry].update_date);
+            dir->entries[entry].update_time = ntohs(dir->entries[entry].update_time);
+            dir->entries[entry].create_date = ntohs(dir->entries[entry].create_date);
+            dir->entries[entry].create_time = ntohs(dir->entries[entry].create_time);
+            dir->entries[entry].file_size = ntohl(dir->entries[entry].file_size);
+            dir->entries[entry].start_cluster = ntohl(dir->entries[entry].start_cluster);
+            entry++;
             rec++;
         }
         cluster = xtaf_next_cluster_num(xtaf, cluster);
@@ -273,10 +280,10 @@ uint32_t xtaf_print_root(struct xtaf *xtaf) {
         fprintf(stderr, "    Name length: 0x%02x\n", rec->name_len);
         fprintf(stderr, "    Flags: 0x%02x\n", rec->file_flags);
         fprintf(stderr, "    Filename: %s\n", filename);
-        fprintf(stderr, "    Start cluster: %d\n", htonl(rec->start_cluster));
-        fprintf(stderr, "    File size: %d\n", htonl(rec->file_size));
-        fprintf(stderr, "    Creation: %s %s\n", xtaf_date_str(rec->creation_date),
-                xtaf_time_str(rec->creation_time));
+        fprintf(stderr, "    Start cluster: %d\n", rec->start_cluster);
+        fprintf(stderr, "    File size: %d\n", rec->file_size);
+        fprintf(stderr, "    Creation: %s %s\n", xtaf_date_str(rec->create_date),
+                xtaf_time_str(rec->create_time));
         fprintf(stderr, "    Access: %s %s\n", xtaf_date_str(rec->access_date),
                 xtaf_time_str(rec->access_time));
         fprintf(stderr, "    Update: %s %s\n", xtaf_date_str(rec->update_date),
