@@ -132,10 +132,10 @@ struct xtaf *xtaf_init(struct part *part) {
     xtaf->current_dir = NULL;
 
     xtaf->cluster_size = xtaf->spc * 512;
-    xtaf->cluster_count = (xtaf->length) / xtaf->cluster_size;
+    xtaf->cluster_count = xtaf->length / xtaf->cluster_size;
     xtaf->entry_size = (xtaf->cluster_count>=0xfff0?4:2);
     xtaf->chainmap_size = (xtaf->cluster_count*xtaf->entry_size);
-    xtaf->chainmap_size =  (xtaf->chainmap_size / 4096 + 1) * 4096;
+    xtaf->chainmap_size = (xtaf->chainmap_size / 4096 + 1) * 4096;
 
     fprintf(stderr, "Partition size: %lld\n", xtaf->length);
     fprintf(stderr, "Sectors per cluster: %d\n", xtaf->spc);
@@ -161,27 +161,9 @@ void xtaf_free(struct xtaf **xtaf) {
 
 
 
-struct xtaf_dir *xtaf_dir_get(struct xtaf *xtaf, uint32_t cluster) {
+static uint32_t xtaf_count_dir_entries(struct xtaf *xtaf, uint32_t cluster) {
     struct xtaf_dir *dir = xtaf->current_dir;
     const uint8_t *current_cluster;
-    uint32_t start_cluster = cluster;
-
-    if (!dir) {
-        xtaf->current_dir = malloc(sizeof(struct xtaf_dir));
-        if (!xtaf->current_dir)
-            return NULL;
-        dir = xtaf->current_dir;
-        dir->entries = NULL;
-    }
-
-    /* Count up the number of directory entries */
-    dir->entry_count = 0;
-    dir->parent = 0;
-    dir->cluster = start_cluster;
-    dir->xtaf = xtaf;
-    free(dir->entries);
-
-    cluster = start_cluster;
     do {
         const struct xtaf_dir_entry *rec;
         current_cluster = xtaf_cluster(xtaf, cluster);
@@ -205,13 +187,13 @@ struct xtaf_dir *xtaf_dir_get(struct xtaf *xtaf, uint32_t cluster) {
         }
         cluster = xtaf_next_cluster_num(xtaf, cluster);
     } while (cluster && cluster != 0xffffffff);
+    return 0;
+}
 
-    free(dir->entries);
-    dir->entries = malloc(dir->entry_count * sizeof(struct xtaf_dir_entry));
-
-    /* Now read all entries */
-    cluster = start_cluster;
+static uint32_t xtaf_read_dir_entries(struct xtaf *xtaf, uint32_t cluster) {
     uint32_t entry = 0;
+    struct xtaf_dir *dir = xtaf->current_dir;
+    const uint8_t *current_cluster;
     do {
         const struct xtaf_dir_entry *rec;
         current_cluster = xtaf_cluster(xtaf, cluster);
@@ -232,6 +214,7 @@ struct xtaf_dir *xtaf_dir_get(struct xtaf *xtaf, uint32_t cluster) {
                 break;
 
             dir->entries[entry] = *rec;
+            /* Swap all relevent entries */
             dir->entries[entry].access_date = ntohs(dir->entries[entry].access_date);
             dir->entries[entry].access_time = ntohs(dir->entries[entry].access_time);
             dir->entries[entry].update_date = ntohs(dir->entries[entry].update_date);
@@ -250,7 +233,34 @@ struct xtaf_dir *xtaf_dir_get(struct xtaf *xtaf, uint32_t cluster) {
         }
         cluster = xtaf_next_cluster_num(xtaf, cluster);
     } while (cluster && cluster != 0xffffffff);
+    return 0;
+}
 
+
+struct xtaf_dir *xtaf_dir_get(struct xtaf *xtaf, uint32_t cluster) {
+    struct xtaf_dir *dir = xtaf->current_dir;
+
+    if (!dir) {
+        xtaf->current_dir = malloc(sizeof(struct xtaf_dir));
+        if (!xtaf->current_dir)
+            return NULL;
+        dir = xtaf->current_dir;
+        dir->entries = NULL;
+    }
+
+    /* Count up the number of directory entries */
+    dir->entry_count = 0;
+    dir->parent = 0;
+    dir->cluster = cluster;
+    dir->xtaf = xtaf;
+    free(dir->entries);
+
+    xtaf_count_dir_entries(xtaf, cluster);
+
+    dir->entries = malloc(dir->entry_count * sizeof(struct xtaf_dir_entry));
+
+    /* Now read all entries */
+    xtaf_read_dir_entries(xtaf, cluster);
     return dir;
 }
 
@@ -270,7 +280,7 @@ void xtaf_dir_free(struct xtaf_dir **xtaf_dir) {
 
 uint32_t xtaf_print_dir(struct xtaf_dir *dir) {
     int i;
-    printf(" -1.      [Parent Directory]\n");
+    printf(" -1. %92s [Parent Directory]\n", "");
     for (i=0; i<dir->entry_count; i++) {
         struct xtaf_dir_entry *rec = &dir->entries[i];
         printf("%3d. %02x %10d  0x%02x %10d %10s %8s  %10s %8s  %10s %8s %s\n",
