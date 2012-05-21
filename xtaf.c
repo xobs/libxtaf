@@ -101,14 +101,9 @@ struct xtaf *xtaf_init(struct part *part) {
             xtaf->cluster_count);
     fprintf(stderr, "Chainmap entries are %d bytes\n", xtaf->entry_size);
     fprintf(stderr, "Chainmap size: %d bytes\n", xtaf->chainmap_size);
-    fprintf(stderr, "First 16384 bytes of fs\n");
 
     xtaf->chainmap = xtaf->data + 0x1000;
     xtaf->clusters = xtaf->chainmap + xtaf->chainmap_size;
-
-    int i;
-    for (i=0; i<16384; i++)
-        printf("%c", xtaf->clusters[i]);
 
     return xtaf;
 }
