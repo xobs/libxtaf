@@ -147,7 +147,7 @@ uint32_t print_root(struct xtaf *xtaf) {
         fprintf(stderr, "    Flags: 0x%02x\n", rec->file_flags);
         fprintf(stderr, "    Filename: %s\n", filename);
         fprintf(stderr, "    Start cluster: %d\n", htonl(rec->start_cluster));
-        fprintf(stderr, "    File size: %d\n", rec->file_size);
+        fprintf(stderr, "    File size: %d\n", htonl(rec->file_size));
         fprintf(stderr, "    Creation: %s %s\n", xtaf_date_str(rec->creation_date),
                 xtaf_time_str(rec->creation_time));
         fprintf(stderr, "    Access: %s %s\n", xtaf_date_str(rec->access_date),
