@@ -7,6 +7,11 @@
 #include "part.h"
 #include "xtaf.h"
 
+
+struct xtaf_record;
+
+
+
 struct xtaf {
     const uint8_t *data;
     const uint8_t *chainmap;
@@ -21,6 +26,13 @@ struct xtaf {
     uint32_t cluster_size;
     uint32_t entry_size;
     uint32_t chainmap_size;
+};
+
+struct xtaf_dir {
+    struct xtaf *xtaf;
+    struct xtaf_dir *parent;
+    struct xtaf_record *rec;
+    uint32_t cluster;   /* Starting cluster */
 };
 
 struct xtaf_record {
@@ -38,6 +50,11 @@ struct xtaf_record {
 } __attribute__ ((__packed__));
 
 
+
+
+static inline const uint8_t *xtaf_cluster(struct xtaf *xtaf, uint32_t cluster) {
+    return xtaf->clusters+(xtaf->cluster_size*(cluster-1));
+}
 
 static char *xtaf_time_str(uint16_t t) {
     static char str[64];
@@ -115,12 +132,40 @@ struct xtaf *xtaf_init(struct part *part) {
 }
 
 
+
+struct xtaf_dir *xtaf_get_root(struct xtaf *xtaf) {
+    struct xtaf_dir *dir;
+
+    dir = malloc(sizeof(struct xtaf_dir));
+    if (!dir)
+        return NULL;
+
+
+    dir->rec = (struct xtaf_record *)xtaf_cluster(xtaf, xtaf->rdc);
+    dir->parent = NULL;
+    dir->cluster = xtaf->rdc;
+    dir->xtaf = xtaf;
+
+    return dir;
+}
+
+
+void xtaf_dir_free(struct xtaf_dir **xtaf_dir) {
+    free(*xtaf_dir);
+    *xtaf_dir = NULL;
+    return;
+}
+
+
+
 uint32_t xtaf_print_root(struct xtaf *xtaf) {
-    fprintf(stderr, "Root directory:\n");
+    struct xtaf_dir *dir;
     int i;
     struct xtaf_record *rec;
+    dir = xtaf_get_root(xtaf);
+    fprintf(stderr, "Root directory:\n");
     fprintf(stderr, "First few entries:  \n");
-    rec = (struct xtaf_record *)xtaf->clusters;
+    rec = dir->rec;
     for (i=0; i<64; i++) {
         uint8_t filename[0x2b];
 
@@ -158,6 +203,8 @@ uint32_t xtaf_print_root(struct xtaf *xtaf) {
         rec++;
     }
     printf("\n");
+
+    xtaf_dir_free(&dir);
 
     return 0;
 }
