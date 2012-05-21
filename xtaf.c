@@ -57,7 +57,12 @@ struct xtaf_dir_entry {
 
 
 static inline const uint8_t *xtaf_cluster(struct xtaf *xtaf, uint32_t cluster) {
-    return xtaf->clusters+(xtaf->cluster_size*(cluster-1));
+    if (xtaf->entry_size == 2)
+        return xtaf->clusters+ntohs(xtaf->entry_size*(cluster-1));
+    else if (xtaf->entry_size == 4)
+        return xtaf->clusters+ntohl(xtaf->entry_size*(cluster-1));
+    fprintf(stderr, "Severe error: Unknown entry size %d\n", xtaf->entry_size);
+    return 0;
 }
 
 static inline uint32_t xtaf_next_cluster_num(struct xtaf *xtaf, uint32_t cluster) {
