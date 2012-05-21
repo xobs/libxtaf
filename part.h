@@ -9,12 +9,32 @@ enum part_format {
 struct disk;
 struct part;
 
-struct part *part_init(struct disk *disk, int part_id);
+
+/* Returns the number of partitions available */
+uint32_t part_disk_count(struct disk *disk);
+
+/* Returns the name of the specified partition */
+char *part_disk_name(struct disk *disk, uint8_t part_id);
+
+/* Returns the format of the specified partition */
+enum part_format part_disk_format(struct disk *disk, uint8_t part_id);
+
+
+
+
+struct part *part_init(struct disk *disk, uint8_t part_id);
 void part_free(struct part **part);
 
+/* Returns the length of the selected partition */
 uint64_t part_length(struct part *part);
+
+/* Returns a pointer to the partition's data */
 const uint8_t *part_data(struct part *part);
+
+/* Returns a byte from the specified offset */
 uint8_t part_byte(struct part *part, uint64_t offset);
+
+/* Returns the format of the selected partition */
 enum part_format part_format(struct part *part);
 
 #endif //__PART_H__

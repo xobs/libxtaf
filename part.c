@@ -70,7 +70,26 @@ static struct partition_def partitions[] = {
 };
 
 
-struct part *part_init(struct disk *disk, int part_id) {
+
+
+/* Returns the number of partitions available */
+uint32_t part_disk_count(struct disk *disk) {
+    return sizeof(partitions)/sizeof(*partitions);
+}
+
+/* Returns the name of the specified partition */
+char *part_disk_name(struct disk *disk, uint8_t part_id) {
+    return part_id<part_disk_count(disk)?partitions[part_id].name:NULL;
+}
+
+/* Returns the format of the specified partition */
+enum part_format part_disk_format(struct disk *disk, uint8_t part_id) {
+    return part_id<part_disk_count(disk)?partitions[part_id].format:0;
+}
+
+
+
+struct part *part_init(struct disk *disk, uint8_t part_id) {
     struct part *part;
 
     part = malloc(sizeof(struct part));
