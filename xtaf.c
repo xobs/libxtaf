@@ -13,7 +13,7 @@ struct xtaf {
     const uint8_t *clusters;
     uint64_t length;
 
-    uint8_t magic[4];
+    uint8_t  magic[4];
     uint32_t id;
     uint32_t spc; // Sectors per cluster
     uint32_t rdc; // Root directory cluster
@@ -24,9 +24,9 @@ struct xtaf {
 };
 
 struct xtaf_record {
-    uint8_t name_len;
-    uint8_t file_flags;
-    uint8_t filename[0x2a];
+    uint8_t  name_len;
+    uint8_t  file_flags;
+    uint8_t  filename[0x2a];
     uint32_t start_cluster;
     uint32_t file_size;
     uint16_t creation_date;
