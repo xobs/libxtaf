@@ -8,8 +8,8 @@
 #include "xtaf.h"
 
 
-struct xtaf_record;
-
+struct xtaf_dir_entry;
+struct xtaf_dir;
 
 
 struct xtaf {
@@ -26,16 +26,20 @@ struct xtaf {
     uint32_t cluster_size;
     uint32_t entry_size;
     uint32_t chainmap_size;
+
+    uint8_t *page_cache; // Temporary cache for reading clusters.
+    struct xtaf_dir *current_dir;
 };
 
 struct xtaf_dir {
     struct xtaf *xtaf;
-    struct xtaf_dir *parent;
-    struct xtaf_record *rec;
+    struct xtaf_dir_entry *entries;
+    uint32_t entry_count;
     uint32_t cluster;   /* Starting cluster */
+    uint32_t parent;
 };
 
-struct xtaf_record {
+struct xtaf_dir_entry {
     uint8_t  name_len;
     uint8_t  file_flags;
     uint8_t  filename[0x2a];
@@ -54,6 +58,19 @@ struct xtaf_record {
 
 static inline const uint8_t *xtaf_cluster(struct xtaf *xtaf, uint32_t cluster) {
     return xtaf->clusters+(xtaf->cluster_size*(cluster-1));
+}
+
+static inline uint32_t xtaf_next_cluster_num(struct xtaf *xtaf, uint32_t cluster) {
+    if (xtaf->entry_size == 2) {
+        uint16_t *chainmap = (uint16_t *)xtaf->chainmap;
+        return (uint32_t)chainmap[cluster];
+    }
+    else if (xtaf->entry_size == 4) {
+        uint32_t *chainmap = (uint32_t *)xtaf->chainmap;
+        return (uint32_t)chainmap[cluster];
+    }
+    fprintf(stderr, "Severe error: Unknown entry size %d\n", xtaf->entry_size);
+    return 0xffffffff;
 }
 
 static char *xtaf_time_str(uint16_t t) {
@@ -109,6 +126,7 @@ struct xtaf *xtaf_init(struct part *part) {
     xtaf->id = ntohl(xtaf->id);
     xtaf->spc = ntohl(xtaf->spc);
     xtaf->rdc = ntohl(xtaf->rdc);
+    xtaf->current_dir = NULL;
 
     xtaf->cluster_size = xtaf->spc * 512;
     xtaf->cluster_count = (xtaf->length) / xtaf->cluster_size;
@@ -131,20 +149,90 @@ struct xtaf *xtaf_init(struct part *part) {
     return xtaf;
 }
 
+void xtaf_free(struct xtaf **xtaf) {
+    free((*xtaf)->page_cache);
+    free(*xtaf);
+    *xtaf = NULL;
+}
+
+
 
 
 struct xtaf_dir *xtaf_dir_get(struct xtaf *xtaf, uint32_t cluster) {
-    struct xtaf_dir *dir;
+    struct xtaf_dir *dir = xtaf->current_dir;
+    const uint8_t *current_cluster;
+    uint32_t start_cluster = cluster;
 
-    dir = malloc(sizeof(struct xtaf_dir));
-    if (!dir)
-        return NULL;
+    if (!dir) {
+        xtaf->current_dir = malloc(sizeof(struct xtaf_dir));
+        if (!xtaf->current_dir)
+            return NULL;
+        dir = xtaf->current_dir;
+        dir->entries = NULL;
+    }
 
-
-    dir->rec = (struct xtaf_record *)xtaf_cluster(xtaf, cluster);
-    dir->parent = NULL;
-    dir->cluster = xtaf->rdc;
+    /* Count up the number of directory entries */
+    dir->entry_count = 0;
+    dir->parent = 0;
+    dir->cluster = start_cluster;
     dir->xtaf = xtaf;
+    free(dir->entries);
+
+    cluster = start_cluster;
+    do {
+        const struct xtaf_dir_entry *rec;
+        current_cluster = xtaf_cluster(xtaf, cluster);
+        rec = (const struct xtaf_dir_entry *)current_cluster;
+
+        while ((uint8_t *)rec-(uint8_t *)current_cluster < xtaf->cluster_size) {
+            if (rec->access_date == 0xffff
+            && rec->access_time == 0xffff
+            && rec->update_date == 0xffff
+            && rec->update_time == 0xffff
+            && rec->creation_date == 0xffff
+            && rec->creation_time == 0xffff
+            && rec->file_size == -1
+            && rec->start_cluster == -1
+            && rec->file_flags == 0xff
+            && rec->name_len == 0xff
+            )
+                break;
+            dir->entry_count++;
+            rec++;
+        }
+        cluster = xtaf_next_cluster_num(xtaf, cluster);
+    } while (cluster && cluster != 0xffffffff);
+
+    free(dir->entries);
+    dir->entries = malloc(dir->entry_count * sizeof(struct xtaf_dir_entry));
+
+    /* Now read all entries */
+    cluster = start_cluster;
+    uint32_t entry = 0;
+    do {
+        const struct xtaf_dir_entry *rec;
+        current_cluster = xtaf_cluster(xtaf, cluster);
+        rec = (const struct xtaf_dir_entry *)current_cluster;
+
+        while ((uint8_t *)rec-(uint8_t *)current_cluster < xtaf->cluster_size) {
+            if (rec->access_date == 0xffff
+            && rec->access_time == 0xffff
+            && rec->update_date == 0xffff
+            && rec->update_time == 0xffff
+            && rec->creation_date == 0xffff
+            && rec->creation_time == 0xffff
+            && rec->file_size == -1
+            && rec->start_cluster == -1
+            && rec->file_flags == 0xff
+            && rec->name_len == 0xff
+            )
+                break;
+
+            dir->entries[entry++] = *rec;
+            rec++;
+        }
+        cluster = xtaf_next_cluster_num(xtaf, cluster);
+    } while (cluster && cluster != 0xffffffff);
 
     return dir;
 }
@@ -156,6 +244,7 @@ struct xtaf_dir *xtaf_get_root(struct xtaf *xtaf) {
 
 
 void xtaf_dir_free(struct xtaf_dir **xtaf_dir) {
+    (*xtaf_dir)->xtaf->current_dir = NULL;
     free(*xtaf_dir);
     *xtaf_dir = NULL;
     return;
@@ -164,28 +253,15 @@ void xtaf_dir_free(struct xtaf_dir **xtaf_dir) {
 
 
 uint32_t xtaf_print_root(struct xtaf *xtaf) {
-    struct xtaf_dir *dir;
     int i;
-    struct xtaf_record *rec;
+    struct xtaf_dir *dir;
+
     dir = xtaf_get_root(xtaf);
     fprintf(stderr, "Root directory:\n");
     fprintf(stderr, "First few entries:  \n");
-    rec = dir->rec;
-    for (i=0; i<64; i++) {
+    for (i=0; i<dir->entry_count; i++) {
         uint8_t filename[0x2b];
-
-        if (rec->access_date == 0xffff
-         && rec->access_time == 0xffff
-         && rec->update_date == 0xffff
-         && rec->update_time == 0xffff
-         && rec->creation_date == 0xffff
-         && rec->creation_time == 0xffff
-         && rec->file_size == -1
-         && rec->start_cluster == -1
-         && rec->file_flags == 0xff
-         && rec->name_len == 0xff
-         )
-            break;
+        struct xtaf_dir_entry *rec = &dir->entries[i];
 
         bzero(filename, sizeof(filename));
         memcpy(filename, rec->filename, sizeof(rec->filename));
@@ -208,8 +284,6 @@ uint32_t xtaf_print_root(struct xtaf *xtaf) {
         rec++;
     }
     printf("\n");
-
-    xtaf_dir_free(&dir);
 
     return 0;
 }
