@@ -41,7 +41,10 @@ struct xtaf_record {
 static char *xtaf_time_str(uint16_t t) {
     static char str[64];
     t = htons(t);
-    snprintf(str, sizeof(str)-1, "%u:%02u:%u", t>>11, (t>>5)&31, t&31);
+    uint8_t hours = (t>>11)&0x1f;
+    uint8_t minutes = (t>>5)&0x3f;
+    uint8_t seconds = 2*((t>>0)&0x1f);
+    snprintf(str, sizeof(str)-1, "%u:%02u:%02u", hours, minutes, seconds);
     return str;
 }
 
