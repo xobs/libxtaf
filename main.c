@@ -22,17 +22,18 @@ int main (int argc, char **argv) {
         return 1;
 
 
-    part = part_open(disk, 6);
+    part = part_init(disk, 5);
     if (!part) {
         perror("Unable to open partition");
         return 1;
     }
 
-    xtaf = xtaf_open(part);
+    xtaf = xtaf_init(part);
     if (!xtaf) {
         perror("Unable to open XTAF partition");
         return 1;
     }
+    print_root(xtaf);
 
     return 0;
 }
