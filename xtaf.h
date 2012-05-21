@@ -10,5 +10,6 @@ void xtaf_free(struct xtaf **xtaf);
 
 struct xtaf_dir *xtaf_get_root(struct xtaf *xtaf);
 uint32_t xtaf_print_root(struct xtaf *xtaf);
+uint32_t xtaf_print_dir(struct xtaf_dir *dir);
 
 #endif /* __XTAF_H__ */

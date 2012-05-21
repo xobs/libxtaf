@@ -235,6 +235,11 @@ struct xtaf_dir *xtaf_dir_get(struct xtaf *xtaf, uint32_t cluster) {
             dir->entries[entry].create_time = ntohs(dir->entries[entry].create_time);
             dir->entries[entry].file_size = ntohl(dir->entries[entry].file_size);
             dir->entries[entry].start_cluster = ntohl(dir->entries[entry].start_cluster);
+            int j;
+            /* Replace 0xff with 0x00, which shows up sometimes in filenames */
+            for(j=0; j<sizeof(dir->entries[entry].filename); j++)
+                if (dir->entries[entry].filename[j] == 0xff)
+                    dir->entries[entry].filename[j] = 0x00;
             entry++;
             rec++;
         }
@@ -258,39 +263,33 @@ void xtaf_dir_free(struct xtaf_dir **xtaf_dir) {
 }
 
 
+uint32_t xtaf_print_dir(struct xtaf_dir *dir) {
+    int i;
+    printf(" -1.      [Parent Directory]\n");
+    for (i=0; i<dir->entry_count; i++) {
+        struct xtaf_dir_entry *rec = &dir->entries[i];
+        printf("%3d. %02x %10d  0x%02x %10d %10s %8s  %10s %8s  %10s %8s %s\n",
+                i,
+                rec->name_len,
+                rec->file_size,
+                rec->file_flags, rec->start_cluster,
+                xtaf_date_str(rec->create_date),
+                xtaf_time_str(rec->create_time),
+                xtaf_date_str(rec->access_date),
+                xtaf_time_str(rec->access_time),
+                xtaf_date_str(rec->update_date),
+                xtaf_time_str(rec->update_time),
+                rec->filename);
+    }
+    return 0;
+}
 
 uint32_t xtaf_print_root(struct xtaf *xtaf) {
-    int i;
     struct xtaf_dir *dir;
 
     dir = xtaf_get_root(xtaf);
     fprintf(stderr, "Root directory:\n");
-    fprintf(stderr, "First few entries:  \n");
-    for (i=0; i<dir->entry_count; i++) {
-        uint8_t filename[0x2b];
-        struct xtaf_dir_entry *rec = &dir->entries[i];
-
-        bzero(filename, sizeof(filename));
-        memcpy(filename, rec->filename, sizeof(rec->filename));
-        int j;
-        for(j=0; j<sizeof(filename); j++)
-            if (filename[j] == 0xff)
-                filename[j] = 0x00;
-        fprintf(stderr, "New file\n");
-        fprintf(stderr, "    Name length: 0x%02x\n", rec->name_len);
-        fprintf(stderr, "    Flags: 0x%02x\n", rec->file_flags);
-        fprintf(stderr, "    Filename: %s\n", filename);
-        fprintf(stderr, "    Start cluster: %d\n", rec->start_cluster);
-        fprintf(stderr, "    File size: %d\n", rec->file_size);
-        fprintf(stderr, "    Creation: %s %s\n", xtaf_date_str(rec->create_date),
-                xtaf_time_str(rec->create_time));
-        fprintf(stderr, "    Access: %s %s\n", xtaf_date_str(rec->access_date),
-                xtaf_time_str(rec->access_time));
-        fprintf(stderr, "    Update: %s %s\n", xtaf_date_str(rec->update_date),
-                xtaf_time_str(rec->update_time));
-        rec++;
-    }
-    printf("\n");
+    return xtaf_print_dir(dir);
 
     return 0;
 }
